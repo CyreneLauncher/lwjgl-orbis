@@ -56,7 +56,9 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang-18 lld-18 llvm-18 cmake ninja-build pkg-config python3-pyelftools
+          # The X11 and other host headers: LWJGL's Linux sources include them (as in the launcher's build host).
+          sudo apt-get install -y build-essential clang-18 lld-18 llvm-18 cmake ninja-build pkg-config python3-pyelftools \
+            libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev libasound2-dev libcups2-dev libfontconfig1-dev
           echo /usr/lib/llvm-18/bin >> "$GITHUB_PATH"
       - name: Read pinned host JDK 17
         id: host
