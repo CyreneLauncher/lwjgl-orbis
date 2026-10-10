@@ -7,15 +7,19 @@ import zipfile
 import sys
 from pathlib import Path
 
-INTEGRATION = Path(os.environ.get("ORBIS_LAUNCHER_ROOT", Path(__file__).resolve().parent.parent / "orbis-launcher")).resolve()
-sys.path.insert(0, str(INTEGRATION / "graphics-probe/tools"))
+HERE = Path(__file__).resolve().parent
+# Shared PRX recipe, input stamps and pinned-archive helper (orbis-runtime-support).
+SUPPORT = Path(os.environ.get('ORBIS_RUNTIME_SUPPORT') or HERE.parent / 'orbis-runtime-support').resolve()
+# Downloads, prepared sources (sources/orbis-compat, sources/mesa) and outputs.
+BUILD = Path(os.environ.get('ORBIS_BUILD_ROOT') or HERE / 'build').resolve()
+sys.path.insert(0, str(SUPPORT))
+sys.path.insert(0, str(HERE))
 
 import build_stamp
 import classfile
 import lwjgl_sources
 import orbis_prx
 
-ROOT = orbis_prx.ROOT
 
 
 def mangle(value):
@@ -52,19 +56,19 @@ def main():
     parser.add_argument('--release', choices=['3.4.3'], default='3.4.3')
     parser.add_argument('--jars', required=True, help='audited official LWJGL 3.4.3 JAR directory')
     parser.add_argument('--jni-headers', default='/usr/lib/jvm/java-17-openjdk-amd64/include')
-    parser.add_argument('--downloads', default=str(ROOT / 'build/downloads'))
+    parser.add_argument('--downloads', default=str(BUILD / 'downloads'))
     parser.add_argument('--fetch', action='store_true')
-    parser.add_argument('--output', default=str(ROOT / 'build/vma-3.4.3'))
+    parser.add_argument('--output', default=str(BUILD / 'vma-3.4.3'))
     args = parser.parse_args()
     out = Path(args.output).resolve()
     out.mkdir(parents=True, exist_ok=True)
     jar = lwjgl_sources.java_artifact(args.jars, 'lwjgl-vma-3.4.3.jar')
     required = native_exports(jar)
-    headers = ROOT / 'build/sources/mesa/include'
+    headers = BUILD / 'sources/mesa/include'
     tools = orbis_prx.Toolchain(args.sdk, args.toolchain)
     stamp = (orbis_prx.stamp_recipe(build_stamp.Stamp(out, 'vma'), tools)
              .files(Path(__file__), Path(classfile.__file__), Path(lwjgl_sources.__file__),
-                    ROOT / 'lwjgl/lwjgl-sources.lock.json', jar)
+                    HERE / 'lwjgl-sources.lock.json', jar)
              .stats(headers / 'vulkan', Path(args.jni_headers))
              .value('arguments', vars(args)))
     if stamp.current(out / 'vma-audit.json', out / 'liblwjgl_vma.so', out / 'liblwjgl_vma.prx'):
@@ -82,10 +86,10 @@ def main():
              '-I', source / 'vma/src/main/c', '-I', headers)
     objects = [tools.compile(path, obj / (path.stem + '.o'), *flags)
                for path in sorted((source / 'vma/src/generated/c').glob('*.cpp'))]
-    compat = ROOT / 'build/sources/orbis-compat/src'
+    compat = BUILD / 'sources/orbis-compat/src'
     for name in ('orbis_thread_atexit', 'orbis_cxa_guard'):
         objects.append(tools.compile(compat / (name + '.c'), obj / (name + '.o'), '-std=gnu11', '-O2'))
-    objects.append(tools.compile(ROOT / 'lwjgl/openal/orbis_openal_tls_init.c', obj / 'tls_init.o', '-std=c11', '-O2'))
+    objects.append(tools.compile(HERE / 'audio/orbis_openal_tls_init.c', obj / 'tls_init.o', '-std=c11', '-O2'))
     script, runtime = orbis_prx.runtime_objects(tools, out / 'runtime')
     elf = out / 'liblwjgl_vma.so'
     orbis_prx.link(tools, script, runtime, elf, objects)

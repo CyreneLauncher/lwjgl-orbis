@@ -4,7 +4,7 @@
 
 LWJGL has no JNI code for FreeType: FreeType.Functions looks every entry point up by name in
 libfreetype when the class initialises, and calls them through JNI.invoke*. So the module is plain
-FreeType, compiled from the pinned release (lwjgl/lwjgl-sources.lock.json) with its CMake source
+FreeType, compiled from the pinned release (lwjgl-sources.lock.json) with its CMake source
 set and default options, and linked with the shared Orbis PRX recipe (orbis_prx.py). LWJGL's own
 binary adds HarfBuzz and libpng; FreeType works without them (no HarfBuzz-assisted autohinting,
 no PNG colour glyphs). The build fails unless every function FreeType.Functions requires is exported.
@@ -16,13 +16,17 @@ import re
 import sys
 from pathlib import Path
 
-INTEGRATION = Path(os.environ.get("ORBIS_LAUNCHER_ROOT", Path(__file__).resolve().parent.parent / "orbis-launcher")).resolve()
-sys.path.insert(0, str(INTEGRATION / "graphics-probe/tools"))
+HERE = Path(__file__).resolve().parent
+# Shared PRX recipe, input stamps and pinned-archive helper (orbis-runtime-support).
+SUPPORT = Path(os.environ.get('ORBIS_RUNTIME_SUPPORT') or HERE.parent / 'orbis-runtime-support').resolve()
+# Downloads, prepared sources (sources/orbis-compat, sources/mesa) and outputs.
+BUILD = Path(os.environ.get('ORBIS_BUILD_ROOT') or HERE / 'build').resolve()
+sys.path.insert(0, str(SUPPORT))
+sys.path.insert(0, str(HERE))
 import build_stamp  # noqa: E402
 import lwjgl_sources  # noqa: E402
 import orbis_prx  # noqa: E402
 
-ROOT = orbis_prx.ROOT
 # CMakeLists.txt BASE_SRCS, plus the portable stdio ftsystem.c and ftdebug.c it adds for non-Unix
 # hosts (builds/unix/ftsystem.c needs the Unix configure's ftconfig.h).
 SOURCES = (
@@ -59,21 +63,21 @@ def main():
     parser.add_argument('--sdk', default='/home/wonder/ps4-payload-sdk')
     parser.add_argument('--toolchain', default='/home/wonder/PS4Toolchain')
     parser.add_argument('--paid', default='0x3800000000000011')
-    parser.add_argument('--downloads', default=str(ROOT / 'build/downloads'))
+    parser.add_argument('--downloads', default=str(BUILD / 'downloads'))
     parser.add_argument('--fetch', action='store_true', help='download the pinned archives if missing')
     parser.add_argument('--release', choices=sorted(RELEASES), default='3.3.3')
     parser.add_argument('--output', help='default build/freetype (3.3.3) or build/freetype-<release>')
     arguments = parser.parse_args()
     lwjgl_key, freetype_key = RELEASES[arguments.release]
     if arguments.output is None:
-        arguments.output = str(ROOT / ('build/freetype' if arguments.release == '3.3.3' else f'build/freetype-{arguments.release}'))
+        arguments.output = str(BUILD / ('freetype' if arguments.release == '3.3.3' else f'freetype-{arguments.release}'))
     out = Path(arguments.output).resolve()
     out.mkdir(parents=True, exist_ok=True)
     downloads = Path(arguments.downloads)
     tools = orbis_prx.Toolchain(arguments.sdk, arguments.toolchain)
 
     stamp = (orbis_prx.stamp_recipe(build_stamp.Stamp(out, 'freetype'), tools)
-             .files(Path(__file__), Path(lwjgl_sources.__file__), ROOT / 'lwjgl/lwjgl-sources.lock.json')
+             .files(Path(__file__), Path(lwjgl_sources.__file__), HERE / 'lwjgl-sources.lock.json')
              .value('arguments', {k: v for k, v in vars(arguments).items() if k not in ('fetch', 'downloads')}))
     if stamp.current(out / 'freetype-audit.json', out / 'libfreetype.so', out / 'libfreetype.prx'):
         print('libfreetype: unchanged inputs, reusing the last build')

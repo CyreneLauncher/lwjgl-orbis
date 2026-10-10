@@ -8,14 +8,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-INTEGRATION = Path(os.environ.get("ORBIS_LAUNCHER_ROOT", Path(__file__).resolve().parent.parent / "orbis-launcher")).resolve()
-sys.path.insert(0, str(INTEGRATION / "graphics-probe/tools"))
+HERE = Path(__file__).resolve().parent
+# Shared PRX recipe, input stamps and pinned-archive helper (orbis-runtime-support).
+SUPPORT = Path(os.environ.get('ORBIS_RUNTIME_SUPPORT') or HERE.parent / 'orbis-runtime-support').resolve()
+# Downloads, prepared sources (sources/orbis-compat, sources/mesa) and outputs.
+BUILD = Path(os.environ.get('ORBIS_BUILD_ROOT') or HERE / 'build').resolve()
+sys.path.insert(0, str(SUPPORT))
+sys.path.insert(0, str(HERE))
 
 import lwjgl_sources
 import orbis_prx
 import tinyfd_contract
 
-ROOT = orbis_prx.ROOT
 CORE = ('alcOpenDevice', 'alcCloseDevice', 'alcCreateContext', 'alcMakeContextCurrent',
         'alcProcessContext', 'alcSuspendContext', 'alcDestroyContext', 'alcGetCurrentContext',
         'alcGetContextsDevice', 'alcIsExtensionPresent', 'alcGetProcAddress', 'alcGetEnumValue',
@@ -26,9 +30,9 @@ parser.add_argument('--toolchain', default='/home/wonder/PS4Toolchain')
 parser.add_argument('--jni-headers', default='/usr/lib/jvm/java-17-openjdk-amd64/include')
 parser.add_argument('--jni-platform', default='linux')
 parser.add_argument('--paid', default='0x3800000000000011')
-parser.add_argument('--downloads', default=str(ROOT / 'build/downloads'))
+parser.add_argument('--downloads', default=str(BUILD / 'downloads'))
 parser.add_argument('--jars', default='/tmp/lwjgl-audit', help='verified official LWJGL 3.2.2 Java JARs')
-parser.add_argument('--output', default=str(ROOT / 'build/lwjgl-optional'))
+parser.add_argument('--output', default=str(BUILD / 'lwjgl-optional'))
 a = parser.parse_args()
 out = Path(a.output).resolve(); out.mkdir(parents=True, exist_ok=True)
 archive = lwjgl_sources.archive('lwjgl', Path(a.downloads))
@@ -40,9 +44,9 @@ common = lwjgl / 'core/src/main/c'
 tools = orbis_prx.Toolchain(a.sdk, a.toolchain)
 script, runtime = orbis_prx.runtime_objects(tools, out / 'runtime')
 objects = {
-    'libopenal': [tools.compile(ROOT / 'lwjgl/audio/orbis_openal_no_device.c', out / 'openal.o', '-std=c11', '-O2')],
+    'libopenal': [tools.compile(HERE / 'audio/orbis_openal_no_device.c', out / 'openal.o', '-std=c11', '-O2')],
     'liblwjgl_tinyfd': [
-        tools.compile(ROOT / 'lwjgl/tinyfd/orbis_tinyfd.c', out / 'tinyfd.o', '-std=c11', '-O2', '-I', header),
+        tools.compile(HERE / 'tinyfd/orbis_tinyfd.c', out / 'tinyfd.o', '-std=c11', '-O2', '-I', header),
         tools.compile(generated, out / 'tinyfd_jni.o', '-std=c11', '-O2', '-DLWJGL_LINUX', '-DLWJGL_x64',
                       '-I', a.jni_headers, '-I', Path(a.jni_headers) / a.jni_platform,
                       '-I', common, '-I', common / 'linux', '-I', header),
@@ -73,9 +77,9 @@ for name, files in objects.items():
 # Host shared objects are only used to exercise the official Java contract locally.
 host = out / 'host'; host.mkdir(exist_ok=True)
 subprocess.run(['cc', '-shared', '-fPIC', '-std=c11', '-O2', '-o', str(host / 'libopenal.so'),
-                str(ROOT / 'lwjgl/audio/orbis_openal_no_device.c')], check=True)
+                str(HERE / 'audio/orbis_openal_no_device.c')], check=True)
 subprocess.run(['cc', '-shared', '-fPIC', '-std=c11', '-O2', '-DLWJGL_LINUX', '-DLWJGL_x64',
                 '-I', str(a.jni_headers), '-I', str(Path(a.jni_headers) / a.jni_platform),
                 '-I', str(common), '-I', str(common / 'linux'), '-I', str(header),
                 '-o', str(host / 'liblwjgl_tinyfd.so'), str(generated),
-                str(ROOT / 'lwjgl/tinyfd/orbis_tinyfd.c')], check=True)
+                str(HERE / 'tinyfd/orbis_tinyfd.c')], check=True)

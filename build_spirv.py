@@ -5,7 +5,7 @@ Minecraft 26.2 compiles its GLSL to SPIR-V with shaderc and, on OpenGL, turns th
 with SPIRV-Cross. LWJGL has no JNI code for either: it resolves every function by name when a class
 initialises (shaderc's C API, glslang's C interface and resource limits and SPIRV-Tools' optimizer from
 libshaderc; SPIRV-Cross's C API from libspirv-cross), so the build fails unless every one is exported.
-Sources are the commits each LWJGL release's own Linux binaries record (lwjgl/lwjgl-sources.lock.json), with
+Sources are the commits each LWJGL release's own Linux binaries record (lwjgl-sources.lock.json), with
 glslang, SPIRV-Tools and SPIRV-Headers at the revisions shaderc's DEPS names; built as static libraries
 with CMake (no tests, executables or install) and linked whole with the shared Orbis PRX recipe.
 """
@@ -18,13 +18,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-INTEGRATION = Path(os.environ.get("ORBIS_LAUNCHER_ROOT", Path(__file__).resolve().parent.parent / "orbis-launcher")).resolve()
-sys.path.insert(0, str(INTEGRATION / "graphics-probe/tools"))
+HERE = Path(__file__).resolve().parent
+# Shared PRX recipe, input stamps and pinned-archive helper (orbis-runtime-support).
+SUPPORT = Path(os.environ.get('ORBIS_RUNTIME_SUPPORT') or HERE.parent / 'orbis-runtime-support').resolve()
+# Downloads, prepared sources (sources/orbis-compat, sources/mesa) and outputs.
+BUILD = Path(os.environ.get('ORBIS_BUILD_ROOT') or HERE / 'build').resolve()
+sys.path.insert(0, str(SUPPORT))
+sys.path.insert(0, str(HERE))
 import build_stamp  # noqa: E402
 import lwjgl_sources  # noqa: E402
 import orbis_prx  # noqa: E402
 
-ROOT = orbis_prx.ROOT
 SHADERC_BINDINGS = ('Shaderc.java', 'GLSLang.java', 'GLSLangResourceLimits.java', 'SPVOptimizer.java')
 SPVC_BINDINGS = ('Spvc.java',)
 
@@ -44,13 +48,13 @@ def main():
     parser.add_argument('--sdk', default='/home/wonder/ps4-payload-sdk')
     parser.add_argument('--toolchain', default='/home/wonder/PS4Toolchain')
     parser.add_argument('--paid', default='0x3800000000000011')
-    parser.add_argument('--downloads', default=str(ROOT / 'build/downloads'))
+    parser.add_argument('--downloads', default=str(BUILD / 'downloads'))
     parser.add_argument('--fetch', action='store_true', help='download the pinned archives if missing')
     parser.add_argument('--release', choices=('3.4.1', '3.4.3'), default='3.4.3')
     parser.add_argument('--output', help='default build/spirv-<release>')
     arguments = parser.parse_args()
     if arguments.output is None:
-        arguments.output = str(ROOT / f'build/spirv-{arguments.release}')
+        arguments.output = str(BUILD / f'spirv-{arguments.release}')
     # 3.4.1's pins carry no suffix in the lock file; later releases' carry the release.
     suffix = '' if arguments.release == '3.4.1' else f'-{arguments.release}'
     out = Path(arguments.output).resolve()
@@ -58,13 +62,13 @@ def main():
     tools = orbis_prx.Toolchain(arguments.sdk, arguments.toolchain)
     toolchain = Path(arguments.toolchain)
     downloads = Path(arguments.downloads)
-    compat = ROOT / 'build/sources/orbis-compat'
+    compat = BUILD / 'sources/orbis-compat'
 
     cmake_version = subprocess.run(['cmake', '--version'], capture_output=True, text=True, check=True).stdout
     stamp = (orbis_prx.stamp_recipe(build_stamp.Stamp(out, 'spirv'), tools)
-             .files(Path(__file__), Path(lwjgl_sources.__file__), ROOT / 'lwjgl/lwjgl-sources.lock.json',
+             .files(Path(__file__), Path(lwjgl_sources.__file__), HERE / 'lwjgl-sources.lock.json',
                     compat / 'src/orbis_thread_atexit.c', compat / 'src/orbis_cxa_guard.c',
-                    ROOT / 'lwjgl/openal/orbis_openal_tls_init.c')
+                    HERE / 'audio/orbis_openal_tls_init.c')
              .value('cmake', cmake_version)
              .value('arguments', {k: v for k, v in vars(arguments).items() if k not in ('fetch', 'downloads')}))
     outputs = [out / f'{n}.{s}' for n in ('libshaderc', 'libspirv-cross') for s in ('so', 'prx')]
@@ -148,7 +152,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
     # C++ runtime pieces every libc++ module of this recipe needs (as the OpenAL build does).
     atexit = tools.compile(compat / 'src/orbis_thread_atexit.c', out / 'orbis_thread_atexit.o', '-std=c11', '-O2')
     guard = tools.compile(compat / 'src/orbis_cxa_guard.c', out / 'orbis_cxa_guard.o', '-std=gnu11', '-O2')
-    tls_init = tools.compile(ROOT / 'lwjgl/openal/orbis_openal_tls_init.c', out / 'orbis_tls_init.o', '-std=c11', '-O2')
+    tls_init = tools.compile(HERE / 'audio/orbis_openal_tls_init.c', out / 'orbis_tls_init.o', '-std=c11', '-O2')
     script, runtime = orbis_prx.runtime_objects(tools, out / 'runtime')
     summary = {'modules': {}}
     for name, build, names in (('libshaderc', shaderc_build, shaderc_names), ('libspirv-cross', spvc_build, spvc_names)):
