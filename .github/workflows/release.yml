@@ -115,6 +115,7 @@ jobs:
           python3 orbis-runtime-support/release_archive.py pack --root "$ORBIS_BUILD_ROOT" \
             --spec lwjgl-orbis/release.json --dist dist
           (cd dist && sha256sum ./*.tar.xz | sed 's# \./# #' > SHA256SUMS)
+          cat dist/SHA256SUMS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release
