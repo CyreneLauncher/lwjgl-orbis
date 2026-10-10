@@ -26,3 +26,14 @@ openal-soft-orbis and sdl-orbis. The platform PRX is the only module that links 
 library: it statically links Mesa's EGL, radeonsi and RADV archives.
 
 Integration tests and package assembly remain in orbis-launcher.
+
+## Releases
+
+`.github/workflows/release.yml` builds this port on GitHub-hosted Ubuntu with the SDKs and the
+dependencies pinned in `dependencies.lock.json`, and with `publish` checked releases
+`<tag_prefix>-<commit>` holding the archive `release.json` describes. Cyrene Launcher pins that
+release by SHA-256. The workflow needs a `CYRENE_RELEASES_TOKEN` secret that can read the private
+CyreneLauncher repositories.
+
+The LWJGL release also needs the Mesa release pinned in `dependencies.lock.json` (`revision` and
+`sha256`); `fetch_java_artifacts.py` downloads the official JARs from this repository's lock.
