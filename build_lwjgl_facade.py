@@ -29,18 +29,21 @@ import sys
 import zipfile
 from pathlib import Path
 
-INTEGRATION = Path(os.environ.get("ORBIS_LAUNCHER_ROOT", Path(__file__).resolve().parent.parent / "orbis-launcher")).resolve()
-sys.path.insert(0, str(INTEGRATION / "graphics-probe/tools"))
+HERE = Path(__file__).resolve().parent
+# Shared PRX recipe, input stamps and pinned-archive helper (orbis-runtime-support).
+SUPPORT = Path(os.environ.get('ORBIS_RUNTIME_SUPPORT') or HERE.parent / 'orbis-runtime-support').resolve()
+# Downloads, prepared sources (sources/orbis-compat, sources/mesa) and outputs.
+BUILD = Path(os.environ.get('ORBIS_BUILD_ROOT') or HERE / 'build').resolve()
+sys.path.insert(0, str(SUPPORT))
+sys.path.insert(0, str(HERE))
 import classfile  # noqa: E402
 import lwjgl_sources  # noqa: E402
 
-ROOT = lwjgl_sources.ROOT
-RUNNER = ROOT.parent / 'orbis-java-app'
-FACADE = ROOT / 'lwjgl/facade/java'
+FACADE = HERE / 'facade/java'
 # GLFW calls with LWJGL 3.4-only types (OrbisGLFW34); compiled for 3.4 releases alone.
-FACADE_34 = ROOT / 'lwjgl/facade/java-3.4'
+FACADE_34 = HERE / 'facade/java-3.4'
 # The SDL facade (OrbisSDL), compiled for the releases that carry lwjgl-sdl.
-FACADE_SDL = ROOT / 'lwjgl/facade/java-sdl'
+FACADE_SDL = HERE / 'facade/java-sdl'
 SDL_RELEASES = ('3.4.3',)
 # SDL function classes generated over OrbisSDL; with each its $Functions address table (all NULL).
 SDL_REPLACED = ('SDL', 'SDLInit', 'SDLVideo', 'SDLEvents', 'SDLKeyboard', 'SDLMouse', 'SDLClipboard', 'SDLMisc',
@@ -171,14 +174,19 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--boot-jdk', default='/usr/lib/jvm/java-17-openjdk-amd64')
 parser.add_argument('--release', choices=('3.2.2', '3.3.3', '3.4.1', '3.4.3'), default='3.2.2')
 parser.add_argument('--jars', default='/tmp/lwjgl-audit', help='official LWJGL Java JARs of the release')
-parser.add_argument('--downloads', default=str(ROOT / 'build/downloads'))
+parser.add_argument('--downloads', default=str(BUILD / 'downloads'))
 parser.add_argument('--fetch', action='store_true')
 parser.add_argument('--output', help='default build/lwjgl-facade (3.2.2) or build/lwjgl-facade-<release>')
+# The launcher's runner.gpu.NativeInput: the facade calls it, the launcher's app.jar provides it.
+launcher = os.environ.get('ORBIS_LAUNCHER_ROOT')
+parser.add_argument('--native-input', required=launcher is None,
+                    default=launcher and str(Path(launcher) / 'orbis-java-app/src/runner/gpu/NativeInput.java'),
+                    help='NativeInput.java of the launcher this facade is built for')
 arguments = parser.parse_args()
 release = arguments.release
 legacy = release == '3.2.2'
 if arguments.output is None:
-    arguments.output = str(ROOT / ('build/lwjgl-facade' if legacy else f'build/lwjgl-facade-{release}'))
+    arguments.output = str(BUILD / ('lwjgl-facade' if legacy else f'lwjgl-facade-{release}'))
 ADDITIONS = ADDITIONS_3_2_2 if legacy else set()
 SOURCE_ADDITIONS = SOURCE_ADDITIONS_3_2_2 if legacy else {}
 javac = Path(arguments.boot_jdk) / 'bin/javac'
@@ -407,7 +415,7 @@ def generate_sdl(implemented, values):
 # runner.gpu.NativeInput is compiled for linking only; the runner's app.jar provides it.
 runner_classes = out / 'runner-classes'
 subprocess.run([str(javac), '--release', '17', '-d', str(runner_classes),
-                str(RUNNER / 'src/runner/gpu/NativeInput.java')], check=True)
+                arguments.native_input], check=True)
 REPLACED = {'org/lwjgl/glfw/GLFW.class', 'org/lwjgl/glfw/GLFW$Functions.class', 'org/lwjgl/glfw/Callbacks.class'}
 if legacy:
     REPLACED |= {'org/lwjgl/glfw/GLFWImage.class', 'org/lwjgl/glfw/GLFWImage$Buffer.class',
@@ -415,10 +423,10 @@ if legacy:
 modern34 = release.startswith('3.4')
 own = sorted(FACADE.rglob('*.java')) + (sorted(FACADE_34.rglob('*.java')) if modern34 else []) + (
     sorted(FACADE_SDL.rglob('*.java')) if with_sdl else []) + [
-    ROOT / 'lwjgl/java/orbis/graphics/NativePlatform.java',
-                                      ROOT / 'lwjgl/java/orbis/graphics/TextInput.java',
-                                      ROOT / 'lwjgl/java/orbis/graphics/Gamepad.java',
-                                      ROOT / 'lwjgl/java/orbis/graphics/WebBrowser.java']
+    HERE / 'java/orbis/graphics/NativePlatform.java',
+                                      HERE / 'java/orbis/graphics/TextInput.java',
+                                      HERE / 'java/orbis/graphics/Gamepad.java',
+                                      HERE / 'java/orbis/graphics/WebBrowser.java']
 # The official GLFW jar supplies the unchanged classes; the generated GLFW source overrides its GLFW.
 classpath = ':'.join(map(str, (core_jar, opengl_jar, glfw_jar, *extra_jars, runner_classes)))
 sdl_values = sdl_field_values() if with_sdl else {}

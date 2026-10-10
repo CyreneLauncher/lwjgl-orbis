@@ -20,15 +20,8 @@
     "lwjgl-3.2.2.jar": "8ad6294407e15780b43e84929c40e4c5e997972e",
     "lwjgl-opengl-3.2.2.jar": "6ac5bb88b44c43ea195a570aab059f63da004cd8",
     "lwjgl-glfw-3.2.2.jar": "d3ad4df38e400b8afba1de63f84338809399df5b",
-    "lwjgl-stb-3.2.2.jar": "3b8e6ebc5851dd3d17e37e5cadce2eff2a429f0f"
-  },
-  "openal-soft": {
-    "version": "1.23.1",
-    "url": "https://github.com/kcat/openal-soft/releases/download/1.23.1/openal-soft-1.23.1.tar.bz2",
-    "filename": "openal-soft-1.23.1.tar.bz2",
-    "sha256": "796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21",
-    "license": "LGPL-2.1-or-later (COPYING in the archive)",
-    "selection": "Last C++14 release line; builds with the Orbis SDK's libc++ 11. Provides the libopenal LWJGL loads, with an Orbis AudioOut backend added at build time."
+    "lwjgl-stb-3.2.2.jar": "3b8e6ebc5851dd3d17e37e5cadce2eff2a429f0f",
+    "lwjgl-tinyfd-3.2.2.jar": "fcbe606c8f8da6f8f9a05e2c540eb1ee8632b0e9"
   },
   "lwjgl-glfw-sources": {
     "version": "3.2.2",
@@ -108,14 +101,6 @@
     "lwjgl-stb-3.4.1.jar": "f077c3dafc31924fbe8acb0b913f08977ba27f8e",
     "lwjgl-tinyfd-3.4.1.jar": "562697d40dbd2ed0424bf24dcf65d51170f81adf",
     "lwjgl-3.4.1.jar": "6105690714874b995aa7812e4f7732a21109276c"
-  },
-  "sdl3": {
-    "version": "3.4.12",
-    "url": "https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz",
-    "filename": "SDL3-3.4.12.tar.gz",
-    "sha256": "f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7",
-    "license": "Zlib (LICENSE.txt in the archive)",
-    "selection": "Controlify 3.5 (Minecraft 26.1) loads SDL 3.4.12 through its FFM bindings (its bundled libSDL3 reports SDL-3.4.12); SHA-256 matches libsdl.org/release."
   },
   "shaderc": {
     "version": "301b4ede53d59b68bf55f95bb26412d9233c8187",

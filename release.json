@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "asset": "lwjgl-orbis.tar.xz",
+  "tag_prefix": "lwjgl",
+  "outputs": [
+    "lwjgl",
+    "lwjgl-3.3.3",
+    "lwjgl-3.4.1",
+    "lwjgl-3.4.3",
+    "lwjgl-optional",
+    "freetype",
+    "freetype-3.4.1",
+    "freetype-3.4.3",
+    "spirv-3.4.3",
+    "vma-3.4.3",
+    "platform-native"
+  ],
+  "source_files": [
+    "tinyfiledialogs.h"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "orbis-runtime-support": {
+    "repository": "CyreneLauncher/orbis-runtime-support",
+    "revision": "80ad11b70f48b2263de9a792cb9648dbd82a0739"
+  },
+  "mesa-orbis": {
+    "repository": "CyreneLauncher/mesa-orbis",
+    "revision": "4c1edb141f5e0a6ad4b7603c0e49bda1dcfe7a1e",
+    "sha256": "a43c1882c3acdfc05bed7b3a0174ec5f452dc8fd95061522936a9b9eede77b13"
+  }
+}
